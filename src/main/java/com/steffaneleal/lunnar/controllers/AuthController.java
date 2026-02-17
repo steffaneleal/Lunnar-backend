@@ -56,7 +56,7 @@ public class AuthController {
             newUser.setName(body.name());
             newUser.setProvider(body.provider());
             newUser.setBirthdate(body.birthdate());
-            newUser.setPhoneNumber(body.phoneNumber());
+            newUser.setPhoneNumber(body.phone_number());
             newUser.setRole(com.steffaneleal.lunnar.models.UserRole.ADMIN);
             
             this.repository.save(newUser);
