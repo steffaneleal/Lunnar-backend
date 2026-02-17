@@ -26,7 +26,9 @@ public class User {
     private String name;
     private String email;
     private String password;
-    private String provider;
+
+    @Enumerated(EnumType.STRING)
+    private AuthProvider provider; // tipo de provedor: LOCAL ou GOOGLE
 
     @Column(name = "birthdate")
     private LocalDate birthdate;
@@ -34,11 +36,8 @@ public class User {
     @Column(name = "phone_number")
     private String phoneNumber;
 
-    @Enumerated(EnumType.STRING) //
+    @Enumerated(EnumType.STRING)
     private UserRole role;
-
-    @Column(name = "provider_id")
-    private Integer providerId;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

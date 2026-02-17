@@ -30,7 +30,8 @@ public class Order {
     @Column(name = "total_price")
     private BigDecimal totalPrice;
 
-    private String status; // PENDENTE, PAGO, ENVIADO/CONCLUÍDO OU CANCELADO
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status; // status do pedido: PENDENTE, PAGO, ENVIADO, CONCLUIDO OU CANCELADO
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
