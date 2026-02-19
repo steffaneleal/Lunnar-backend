@@ -35,13 +35,17 @@ public class SecurityFilter extends OncePerRequestFilter { // filtro será execu
     ) throws ServletException, IOException {
 
         var token = this.recoverToken(request);
-        var login = tokenService.validateToken(token);
 
-        if (login != null) {
-            User user = userRepository.findByEmail(login).orElseThrow(() -> new RuntimeException("Usuário Não Encontrado"));
-            var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name().toUpperCase()));
-            var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (token != null) {
+            var login = tokenService.validateToken(token);
+
+            if (login != null) {
+                userRepository.findByEmail(login).ifPresent(user -> {
+                    var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                    var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                });
+            }
         }
 
         filterChain.doFilter(request, response);
@@ -50,9 +54,14 @@ public class SecurityFilter extends OncePerRequestFilter { // filtro será execu
     // Metodo auxiliar para recuperar e formatar o Token (tirar o Bearer, deixar apenas o Token)
     private String recoverToken(HttpServletRequest request) {
         var authHeader = request.getHeader("Authorization");
-
-        if(authHeader == null) return null;
-
-        return authHeader.replace("Bearer ", "");
+        if (authHeader == null) {
+            return null;
+        }
+        // Aceita "Bearer " ou "bearer " (case-insensitive)
+        if (!authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return null;
+        }
+        var token = authHeader.substring(7).trim();
+        return token.isEmpty() ? null : token;
     }
 }
