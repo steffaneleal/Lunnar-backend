@@ -6,6 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -18,6 +20,9 @@ import java.util.Collections;
 
 @Component
 public class SecurityFilter extends OncePerRequestFilter { // filtro será executado apenas 1 vez a cada requisição que chegar na API
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityFilter.class);
+
     // Recuperação do Token
     @Autowired
     TokenService tokenService;
@@ -36,15 +41,25 @@ public class SecurityFilter extends OncePerRequestFilter { // filtro será execu
 
         var token = this.recoverToken(request);
 
-        if (token != null) {
+        if (token == null) {
+            log.debug("[JWT] {} {} - Nenhum token no header Authorization", request.getMethod(), request.getRequestURI());
+        } else {
+            log.debug("[JWT] {} {} - Token presente no header", request.getMethod(), request.getRequestURI());
             var login = tokenService.validateToken(token);
 
-            if (login != null) {
-                userRepository.findByEmail(login).ifPresent(user -> {
-                    var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-                    var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                });
+            if (login == null) {
+                log.warn("[JWT] {} {} - Token inválido ou expirado", request.getMethod(), request.getRequestURI());
+            } else {
+                log.debug("[JWT] Token válido para email: {}", login);
+                userRepository.findByEmail(login).ifPresentOrElse(
+                        user -> {
+                            var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                            var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                            log.info("[JWT] Autenticação definida para {} (role={}) em {}", user.getEmail(), user.getRole(), request.getRequestURI());
+                        },
+                        () -> log.warn("[JWT] Token válido mas usuário não encontrado no banco: {}", login)
+                );
             }
         }
 

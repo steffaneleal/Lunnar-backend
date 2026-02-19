@@ -31,7 +31,6 @@ public class TokenService {
             String token = JWT.create()
                            .withIssuer("login-auth-api") // quem está emitindo o token
                            .withSubject(user.getEmail()) // salva o e-mail do usuário no token
-                           .withClaim("role", user.getRole().name()) // Adiciona a role do usuário
                            .withExpiresAt(this.generateExpirationDate()) // gera a hora que expira o token
                            .sign(algorithm);             // gera o token
 

@@ -35,11 +35,22 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/auth/me").authenticated()
+                        // Auth: público
+                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/auth/me", "/auth/test", "/auth/test-admin").authenticated()
+                        // Catálogo: leitura pública; escrita apenas ADMIN
+                        .requestMatchers(HttpMethod.GET, "/categories", "/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/products", "/products/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/products").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/products").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
+                        // Pedidos e clientes: autenticado (controller diferencia ADMIN x USER)
+                        .requestMatchers("/orders", "/orders/**").authenticated()
+                        .requestMatchers("/customers", "/customers/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
