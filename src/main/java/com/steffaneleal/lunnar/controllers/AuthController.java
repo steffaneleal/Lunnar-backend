@@ -10,6 +10,8 @@ import com.steffaneleal.lunnar.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -67,5 +69,19 @@ public class AuthController {
         }
 
         return ResponseEntity.badRequest().build();
+    }
+
+    // Rota para testar o token: retorna o usuário autenticado (requer Authorization: Bearer <token>)
+    @GetMapping("/me")
+    public ResponseEntity<?> me(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(java.util.Map.of(
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail(),
+                "role", user.getRole().name()
+        ));
     }
 }
