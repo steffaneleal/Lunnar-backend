@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 // Relacionamento com o cliente (User com role USER).
@@ -29,6 +30,10 @@ public class Customer {
 
     @Column(name = "company_name")
     private String companyName;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "customer_id")
+    private List<Address> addresses;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
