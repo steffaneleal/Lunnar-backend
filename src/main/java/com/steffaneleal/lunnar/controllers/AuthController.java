@@ -10,6 +10,7 @@ import com.steffaneleal.lunnar.models.User;
 import com.steffaneleal.lunnar.models.UserRole;
 import com.steffaneleal.lunnar.repositories.CustomerRepository;
 import com.steffaneleal.lunnar.repositories.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,7 @@ public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-    private final UserRepository repository;
+    private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
@@ -40,13 +41,13 @@ public class AuthController {
     // Login
     @PostMapping("/login") // /auth/login
     public ResponseEntity login(@RequestBody LoginRequestDTO body ) {
-        User user = this.repository.findByEmail(body.email()).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+        User user = this.userRepository.findByEmail(body.email()).orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
         // Verificação da senha
         if (passwordEncoder.matches(body.password(), user.getPassword())) {
             String token = this.tokenService.generateToken(user);
 
-            return  ResponseEntity.ok(new ResponseDTO(user.getName(), token)); // verificar no frontend quais são as respostas esperadas
+            return  ResponseEntity.ok(new ResponseDTO(user.getName(), token));
         }
 
         return ResponseEntity.badRequest().build();
@@ -54,35 +55,34 @@ public class AuthController {
 
     // Registro
     @PostMapping("/register")
+    @Transactional
     public ResponseEntity register(@RequestBody RegisterRequestDTO body) {
-        Optional<User> user = this.repository.findByEmail(body.email());
+        Optional<User> existingUser = this.userRepository.findByEmail(body.email());
 
-        // Criando um novo usuário
-        if(user.isEmpty()) {
-            User newUser = new User();
-
-            // Salvando a senha de forma criptografada no banco de dados
-            newUser.setPassword(passwordEncoder.encode(body.password()));
-
-            newUser.setEmail(body.email());
-            newUser.setName(body.name());
-            newUser.setProvider(body.provider());
-            newUser.setBirthdate(body.birthdate());
-            newUser.setPhoneNumber(body.phone_number());
-            newUser.setRole(UserRole.USER);
-            this.repository.save(newUser);
-
-            // Cria registro de cliente (CRM) para usuários com role USER
-            Customer customer = new Customer();
-            customer.setUser(newUser);
-            customerRepository.save(customer);
-
-            // Geração do token
-            String token = this.tokenService.generateToken(newUser);
-            return ResponseEntity.ok(new ResponseDTO(newUser.getName(), token));
+        if (existingUser.isPresent()) {
+            return ResponseEntity.badRequest().body("E-mail já cadastrado.");
         }
 
-        return ResponseEntity.badRequest().build();
+        // Cria e salva o novo usuário
+        User newUser = new User();
+        newUser.setPassword(passwordEncoder.encode(body.password()));
+        newUser.setEmail(body.email());
+        newUser.setName(body.name());
+        newUser.setProvider(body.provider());
+        newUser.setBirthdate(body.birthdate());
+        newUser.setPhoneNumber(body.phone_number());
+        newUser.setRole(UserRole.USER);
+        userRepository.save(newUser);
+
+        // Cria e salva o cliente associado com o companyName
+        Customer newCustomer = new Customer();
+        newCustomer.setUser(newUser);
+        newCustomer.setCompanyName(body.companyName()); // Salva o nome da empresa
+        customerRepository.save(newCustomer);
+
+        // Gera do token
+        String token = this.tokenService.generateToken(newUser);
+        return ResponseEntity.ok(new ResponseDTO(newUser.getName(), token));
     }
 
     // Rota para testar o token: retorna o usuário autenticado (requer Authorization: Bearer <token>)

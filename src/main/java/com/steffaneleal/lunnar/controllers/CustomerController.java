@@ -9,10 +9,12 @@ import com.steffaneleal.lunnar.models.Customer;
 import com.steffaneleal.lunnar.models.User;
 import com.steffaneleal.lunnar.models.UserRole;
 import com.steffaneleal.lunnar.repositories.CustomerRepository;
+import com.steffaneleal.lunnar.repositories.UserRepository;
 import com.steffaneleal.lunnar.services.CustomerReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Comparator;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class CustomerController {
 
     private final CustomerRepository customerRepository;
+    private final UserRepository userRepository;
     private final CustomerReportService customerReportService;
 
     // Lista todos os clientes (CRM) - Apenas ADMIN
@@ -64,6 +67,32 @@ public class CustomerController {
             return customerRepository.save(newCustomer);
         });
         return ResponseEntity.ok(toDTO(customer));
+    }
+
+    @PutMapping("/me")
+    @Transactional
+    public ResponseEntity<CustomerDTO> updateMyProfile(@RequestBody CustomerUpdateDTO dto, @AuthenticationPrincipal User authenticatedUser) {
+        // Busca a instância gerenciada do usuário para evitar problemas de "detached entity"
+        User user = userRepository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado no banco de dados."));
+
+        Customer customer = customerRepository.findByUserId(user.getId()).orElseGet(() -> {
+            Customer newCustomer = new Customer();
+            newCustomer.setUser(user);
+            return newCustomer;
+        });
+
+        if (dto.companyName() != null) {
+            customer.setCompanyName(dto.companyName());
+        }
+        if (dto.phoneNumber() != null) {
+            user.setPhoneNumber(dto.phoneNumber());
+        }
+        
+        customer.setUpdatedAt(java.time.LocalDateTime.now());
+        Customer savedCustomer = customerRepository.save(customer);
+
+        return ResponseEntity.ok(toDTO(savedCustomer));
     }
 
     // Relatório do cliente: compras, valores, categorias, tendência por dia da semana -> APENAS ADMIN
