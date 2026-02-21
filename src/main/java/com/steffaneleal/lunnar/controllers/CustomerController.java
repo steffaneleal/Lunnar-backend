@@ -1,8 +1,10 @@
 package com.steffaneleal.lunnar.controllers;
 
+import com.steffaneleal.lunnar.dto.AddressDTO;
 import com.steffaneleal.lunnar.dto.CustomerDTO;
 import com.steffaneleal.lunnar.dto.CustomerReportDTO;
 import com.steffaneleal.lunnar.dto.CustomerUpdateDTO;
+import com.steffaneleal.lunnar.models.Address;
 import com.steffaneleal.lunnar.models.Customer;
 import com.steffaneleal.lunnar.models.User;
 import com.steffaneleal.lunnar.models.UserRole;
@@ -108,5 +110,61 @@ public class CustomerController {
                 c.getLastContactAt(),
                 c.getCreatedAt()
         );
+    }
+
+    // Endereço
+    @GetMapping("/me/addresses")
+    public ResponseEntity<List<AddressDTO>> getMyAddresses(@AuthenticationPrincipal User user) {
+        return customerRepository.findByUserId(user.getId())
+                .map(c -> c.getAddresses().stream().map(this::toAddressDTO).toList())
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.ok(List.of()));
+    }
+
+    @PostMapping("/me/addresses")
+    public ResponseEntity<AddressDTO> addMyAddress(
+            @AuthenticationPrincipal User user,
+            @RequestBody AddressDTO dto) {
+
+        Customer customer = customerRepository.findByUserId(user.getId()).orElseGet(() -> {
+            Customer c = new Customer();
+            c.setUser(user);
+            return customerRepository.save(c);
+        });
+
+        Address address = new Address();
+        address.setStreet(dto.street());
+        address.setNumber(dto.number());
+        address.setComplement(dto.complement());
+        address.setNeighborhood(dto.neighborhood());
+        address.setCity(dto.city());
+        address.setState(dto.state());
+        address.setZipCode(dto.zip_code());
+
+        customer.getAddresses().add(address);
+        customerRepository.save(customer);
+
+        Address saved = customer.getAddresses().get(customer.getAddresses().size() - 1);
+        return ResponseEntity.status(201).body(toAddressDTO(saved));
+    }
+
+    @DeleteMapping("/me/addresses/{addressId}")
+    public ResponseEntity<Void> deleteMyAddress(
+            @PathVariable UUID addressId,
+            @AuthenticationPrincipal User user) {
+
+        return customerRepository.findByUserId(user.getId())
+                .map(c -> {
+                    c.getAddresses().removeIf(a -> a.getId().equals(addressId));
+                    customerRepository.save(c);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    private AddressDTO toAddressDTO(Address a) {
+        return new AddressDTO(a.getId(), a.getStreet(), a.getNumber(),
+                a.getComplement(), a.getNeighborhood(), a.getCity(),
+                a.getState(), a.getZipCode());
     }
 }

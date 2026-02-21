@@ -35,6 +35,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        // Permitir requisições OPTIONS de preflight do navegador
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Auth: público
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auth/me", "/auth/test", "/auth/test-admin").authenticated()
@@ -48,9 +50,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
-                        // Pedidos e clientes: autenticado (controller diferencia ADMIN x USER)
+                        // Pedidos e clientes: autenticado
+                        .requestMatchers(HttpMethod.POST, "/orders").authenticated()
                         .requestMatchers("/orders", "/orders/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/customers/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/customers/**").authenticated()
                         .requestMatchers("/customers", "/customers/**").authenticated()
+                        // Qualquer outra requisição precisa de autenticação
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -67,10 +73,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("*"));
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
