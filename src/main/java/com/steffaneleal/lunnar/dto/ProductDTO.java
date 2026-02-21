@@ -11,6 +11,6 @@ public record ProductDTO(
         Integer stockQuantity,
         UUID categoryId,
         String categoryName,
-        String imageUrl
+        String image_url
 ) {
 }

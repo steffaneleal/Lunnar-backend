@@ -67,6 +67,7 @@ public class ProductController {
         p.setPrice(dto.price());
         p.setStockQuantity(dto.stockQuantity() != null ? dto.stockQuantity() : 0);
         p.setCategory(category);
+        p.setImageUrl(dto.image_url());
         p = productRepository.save(p);
         return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(p));
     }
@@ -87,6 +88,7 @@ public class ProductController {
                     } else {
                         p.setCategory(null);
                     }
+                    p.setImageUrl(dto.image_url());
                     return ResponseEntity.ok(toDTO(productRepository.save(p)));
                 })
                 .orElse(ResponseEntity.notFound().build());

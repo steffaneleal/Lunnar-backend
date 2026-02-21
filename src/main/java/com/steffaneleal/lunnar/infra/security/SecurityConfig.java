@@ -37,11 +37,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // Permitir requisições OPTIONS de preflight do navegador
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // Permitir acesso público à documentação do Swagger
+                        // Permitir acesso público à documentação do Swagger e aos uploads
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         // Auth: público
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auth/me", "/auth/test", "/auth/test-admin").authenticated()
+                        // Upload: autenticado
+                        .requestMatchers(HttpMethod.POST, "/api/upload").authenticated()
                         // Catálogo: leitura pública; escrita apenas ADMIN
                         .requestMatchers(HttpMethod.GET, "/categories", "/categories/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/categories").hasRole("ADMIN")
@@ -53,10 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
                         // Pedidos e clientes: autenticado
-                        .requestMatchers(HttpMethod.GET, "/orders", "/orders/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/orders").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/customers/**").authenticated()
-                        .requestMatchers(HttpMethod.PATCH, "/customers/**").authenticated()
+                        .requestMatchers("/orders", "/orders/**").authenticated()
                         .requestMatchers("/customers", "/customers/**").authenticated()
                         // Qualquer outra requisição precisa de autenticação
                         .anyRequest().authenticated()
