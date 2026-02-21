@@ -50,32 +50,41 @@ public class CustomerReportService {
                 ))
                 .toList();
 
-        // Por categoria: (nome -> orderCount, totalQuantity, totalValue)
+        // Por categoria — compatível com @ManyToMany (getCategories())
         Map<String, int[]> orderCountByCat = new HashMap<>();
         Map<String, Integer> qtyByCat = new HashMap<>();
         Map<String, BigDecimal> valueByCat = new HashMap<>();
+
         for (Order order : orders) {
             if (order.getItems() == null) continue;
             Set<String> catsInThisOrder = new HashSet<>();
+
             for (OrderItem item : order.getItems()) {
                 if (item.getProduct() == null) continue;
-                Category cat = item.getProduct().getCategory();
-                String catName = cat != null ? cat.getName() : "Sem categoria";
-                catsInThisOrder.add(catName);
+
+                // Suporte a múltiplas categorias (@ManyToMany)
+                Set<Category> productCategories = item.getProduct().getCategories();
+                List<String> catNames = (productCategories == null || productCategories.isEmpty())
+                        ? List.of("Sem categoria")
+                        : productCategories.stream().map(Category::getName).toList();
+
                 int qty = item.getQuantity() != null ? item.getQuantity() : 0;
                 BigDecimal itemValue = item.getUnitPrice() != null && item.getQuantity() != null
                         ? item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
                         : BigDecimal.ZERO;
-                qtyByCat.merge(catName, qty, Integer::sum);
-                valueByCat.merge(catName, itemValue, BigDecimal::add);
+
+                for (String catName : catNames) {
+                    catsInThisOrder.add(catName);
+                    qtyByCat.merge(catName, qty, Integer::sum);
+                    valueByCat.merge(catName, itemValue, BigDecimal::add);
+                }
             }
             for (String c : catsInThisOrder) {
                 orderCountByCat.merge(c, new int[]{1}, (a, b) -> new int[]{a[0] + b[0]});
             }
         }
-        Set<String> allCats = new HashSet<>();
-        allCats.addAll(qtyByCat.keySet());
-        List<CategorySummaryDTO> byCategory = allCats.stream()
+
+        List<CategorySummaryDTO> byCategory = qtyByCat.keySet().stream()
                 .map(catName -> new CategorySummaryDTO(
                         catName,
                         orderCountByCat.getOrDefault(catName, new int[]{0})[0],

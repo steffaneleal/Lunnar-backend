@@ -34,9 +34,7 @@ public class CustomerController {
     // Lista todos os clientes (CRM) - Apenas ADMIN
     @GetMapping
     public ResponseEntity<List<CustomerDTO>> listAll(@AuthenticationPrincipal User user) {
-        if (user.getRole() != UserRole.ADMIN) {
-            return ResponseEntity.status(403).build();
-        }
+        if (user.getRole() != UserRole.ADMIN) return ResponseEntity.status(403).build();
         List<CustomerDTO> list = customerRepository.findAll().stream()
                 .sorted(Comparator.comparing(c -> c.getUser().getName(), String.CASE_INSENSITIVE_ORDER))
                 .map(this::toDTO)
@@ -59,7 +57,7 @@ public class CustomerController {
     @GetMapping("/me")
     public ResponseEntity<CustomerDTO> getMyProfile(@AuthenticationPrincipal User user) {
         if (user.getRole() != UserRole.USER) {
-            return ResponseEntity.status(403).body(null);
+            return ResponseEntity.noContent().build();
         }
         Customer customer = customerRepository.findByUserId(user.getId()).orElseGet(() -> {
             Customer newCustomer = new Customer();
@@ -72,38 +70,26 @@ public class CustomerController {
     @PutMapping("/me")
     @Transactional
     public ResponseEntity<CustomerDTO> updateMyProfile(@RequestBody CustomerUpdateDTO dto, @AuthenticationPrincipal User authenticatedUser) {
-        // Busca a instância gerenciada do usuário para evitar problemas de "detached entity"
+        if (authenticatedUser.getRole() != UserRole.USER) return ResponseEntity.status(403).build();
         User user = userRepository.findById(authenticatedUser.getId())
-                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado no banco de dados."));
-
+                .orElseThrow(() -> new IllegalStateException("Usuario nao encontrado."));
         Customer customer = customerRepository.findByUserId(user.getId()).orElseGet(() -> {
-            Customer newCustomer = new Customer();
-            newCustomer.setUser(user);
-            return newCustomer;
+            Customer c = new Customer();
+            c.setUser(user);
+            return c;
         });
-
-        if (dto.companyName() != null) {
-            customer.setCompanyName(dto.companyName());
-        }
-        if (dto.phoneNumber() != null) {
-            user.setPhoneNumber(dto.phoneNumber());
-        }
-        
+        if (dto.companyName() != null) customer.setCompanyName(dto.companyName());
+        if (dto.phoneNumber() != null) user.setPhoneNumber(dto.phoneNumber());
         customer.setUpdatedAt(java.time.LocalDateTime.now());
-        Customer savedCustomer = customerRepository.save(customer);
-
-        return ResponseEntity.ok(toDTO(savedCustomer));
+        return ResponseEntity.ok(toDTO(customerRepository.save(customer)));
     }
 
     // Relatório do cliente: compras, valores, categorias, tendência por dia da semana -> APENAS ADMIN
     @GetMapping("/{id}/report")
     public ResponseEntity<?> getReport(@PathVariable UUID id, @AuthenticationPrincipal User user) {
-        if (user.getRole() != UserRole.ADMIN) {
-            return ResponseEntity.status(403).build();
-        }
+        if (user.getRole() != UserRole.ADMIN) return ResponseEntity.status(403).build();
         try {
-            CustomerReportDTO report = customerReportService.generateReport(id);
-            return ResponseEntity.ok(report);
+            return ResponseEntity.ok(customerReportService.generateReport(id));
         } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
@@ -112,9 +98,7 @@ public class CustomerController {
     // Atualiza dados de relacionamento do cliente (empresa, notas, último contato) -> APENAS ADMIN
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody CustomerUpdateDTO dto, @AuthenticationPrincipal User user) {
-        if (user.getRole() != UserRole.ADMIN) {
-            return ResponseEntity.status(403).build();
-        }
+        if (user.getRole() != UserRole.ADMIN) return ResponseEntity.status(403).build();
         return customerRepository.findById(id)
                 .map(c -> {
                     if (dto.companyName() != null) c.setCompanyName(dto.companyName());
@@ -126,24 +110,22 @@ public class CustomerController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    private CustomerDTO toDTO(Customer c) {
-        User u = c.getUser();
-        return new CustomerDTO(
-                c.getId(),
-                u.getId(),
-                u.getName(),
-                u.getEmail(),
-                u.getPhoneNumber(),
-                c.getCompanyName(),
-                c.getNotes(),
-                c.getLastContactAt(),
-                c.getCreatedAt()
-        );
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        if (user.getRole() != UserRole.ADMIN) return ResponseEntity.status(403).build();
+        return customerRepository.findById(id)
+                .map(c -> {
+                    customerRepository.delete(c);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Endereço
+    // Admin nao tem enderecos - retorna lista vazia em vez de erro
     @GetMapping("/me/addresses")
     public ResponseEntity<List<AddressDTO>> getMyAddresses(@AuthenticationPrincipal User user) {
+        if (user.getRole() != UserRole.USER) return ResponseEntity.ok(List.of());
         return customerRepository.findByUserId(user.getId())
                 .map(c -> c.getAddresses().stream().map(this::toAddressDTO).toList())
                 .map(ResponseEntity::ok)
@@ -151,16 +133,12 @@ public class CustomerController {
     }
 
     @PostMapping("/me/addresses")
-    public ResponseEntity<AddressDTO> addMyAddress(
-            @AuthenticationPrincipal User user,
-            @RequestBody AddressDTO dto) {
-
+    public ResponseEntity<AddressDTO> addMyAddress(@AuthenticationPrincipal User user, @RequestBody AddressDTO dto) {
         Customer customer = customerRepository.findByUserId(user.getId()).orElseGet(() -> {
             Customer c = new Customer();
             c.setUser(user);
             return customerRepository.save(c);
         });
-
         Address address = new Address();
         address.setStreet(dto.street());
         address.setNumber(dto.number());
@@ -169,19 +147,14 @@ public class CustomerController {
         address.setCity(dto.city());
         address.setState(dto.state());
         address.setZipCode(dto.zip_code());
-
         customer.getAddresses().add(address);
         customerRepository.save(customer);
-
         Address saved = customer.getAddresses().get(customer.getAddresses().size() - 1);
         return ResponseEntity.status(201).body(toAddressDTO(saved));
     }
 
     @DeleteMapping("/me/addresses/{addressId}")
-    public ResponseEntity<Void> deleteMyAddress(
-            @PathVariable UUID addressId,
-            @AuthenticationPrincipal User user) {
-
+    public ResponseEntity<Void> deleteMyAddress(@PathVariable UUID addressId, @AuthenticationPrincipal User user) {
         return customerRepository.findByUserId(user.getId())
                 .map(c -> {
                     c.getAddresses().removeIf(a -> a.getId().equals(addressId));
@@ -191,9 +164,14 @@ public class CustomerController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    private CustomerDTO toDTO(Customer c) {
+        User u = c.getUser();
+        return new CustomerDTO(c.getId(), u.getId(), u.getName(), u.getEmail(),
+                u.getPhoneNumber(), c.getCompanyName(), c.getNotes(), c.getLastContactAt(), c.getCreatedAt());
+    }
+
     private AddressDTO toAddressDTO(Address a) {
         return new AddressDTO(a.getId(), a.getStreet(), a.getNumber(),
-                a.getComplement(), a.getNeighborhood(), a.getCity(),
-                a.getState(), a.getZipCode());
+                a.getComplement(), a.getNeighborhood(), a.getCity(), a.getState(), a.getZipCode());
     }
 }

@@ -1,6 +1,7 @@
 package com.steffaneleal.lunnar.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductDTO(
@@ -9,8 +10,7 @@ public record ProductDTO(
         String description,
         BigDecimal price,
         Integer stockQuantity,
-        UUID categoryId,
-        String categoryName,
-        String image_url
+        String imageUrl,
+        List<ProductCategoryDTO> categories
 ) {
 }

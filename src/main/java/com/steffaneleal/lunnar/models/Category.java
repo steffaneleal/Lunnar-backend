@@ -1,15 +1,11 @@
-// Entidade que representa as categorias dos produtos no sistema
 package com.steffaneleal.lunnar.models;
 
-
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
-import java.util.List;
 
 @Entity
 @Table(name = "tb_category")
@@ -25,6 +21,6 @@ public class Category {
     private String name;
     private String description;
 
-    @OneToMany(mappedBy = "category")
-    private List<Product> products;
+    @ManyToMany(mappedBy = "categories")
+    private Set<Product> products = new HashSet<>();
 }

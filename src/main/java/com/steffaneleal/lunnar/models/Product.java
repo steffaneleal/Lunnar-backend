@@ -1,10 +1,11 @@
-// Entidade que representa os produtos do sistema
 package com.steffaneleal.lunnar.models;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -26,7 +27,11 @@ public class Product {
     @Column(name = "image_url")
     private String imageUrl;
 
-    @ManyToOne
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "tb_product_category",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
 }
