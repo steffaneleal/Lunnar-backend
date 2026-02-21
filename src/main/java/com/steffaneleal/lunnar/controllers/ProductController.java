@@ -121,7 +121,8 @@ public class ProductController {
                 p.getPrice(),
                 p.getStockQuantity(),
                 p.getCategory() != null ? p.getCategory().getId() : null,
-                p.getCategory() != null ? p.getCategory().getName() : null
+                p.getCategory() != null ? p.getCategory().getName() : null,
+                p.getImageUrl()
         );
     }
 }

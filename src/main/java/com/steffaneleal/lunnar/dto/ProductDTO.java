@@ -10,6 +10,7 @@ public record ProductDTO(
         BigDecimal price,
         Integer stockQuantity,
         UUID categoryId,
-        String categoryName
+        String categoryName,
+        String imageUrl
 ) {
 }
