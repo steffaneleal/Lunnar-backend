@@ -13,10 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/products")
@@ -29,7 +26,8 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<ProductDTO>> listAll(
             @RequestParam(required = false) UUID categoryId,
-            @RequestParam(required = false) String search
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sortBy
     ) {
         List<Product> list;
         if (categoryId != null && search != null && !search.isBlank()) {
@@ -43,6 +41,13 @@ public class ProductController {
         } else {
             list = productRepository.findAll();
         }
+
+        if ("price_asc".equals(sortBy)) {
+            list = list.stream().sorted(Comparator.comparing(Product::getPrice)).toList();
+        } else if ("price_desc".equals(sortBy)) {
+            list = list.stream().sorted(Comparator.comparing(Product::getPrice).reversed()).toList();
+        }
+
         return ResponseEntity.ok(list.stream().map(this::toDTO).toList());
     }
 
