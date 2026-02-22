@@ -12,7 +12,6 @@ O Lunnar Backend é a espinha dorsal da aplicação CRM, responsável por gerenc
 *   **Spring Security**: Para autenticação (JWT) e autorização baseada em roles (ADMIN, USER).
 *   **Spring Data JPA / Hibernate**: Para persistência de dados e mapeamento objeto-relacional.
 *   **PostgreSQL**: Banco de dados relacional.
-*   **Flyway**: Gerenciamento de migrações de banco de dados, garantindo a evolução controlada do esquema.
 *   **Springdoc OpenAPI (Swagger UI)**: Geração automática de documentação interativa da API.
 *   **Lombok**: Para reduzir o código boilerplate.
 *   **Java JWT**: Para manipulação de JSON Web Tokens.
@@ -23,9 +22,13 @@ O Lunnar Backend é a espinha dorsal da aplicação CRM, responsável por gerenc
 
 *   **Autenticação e Autorização**: Login de usuários, registro, geração de JWTs, e controle de acesso baseado em roles (ADMIN, USER).
 *   **Gestão de Usuários e Clientes**: Criação e atualização de perfis de usuário e cliente, com distinção entre usuários de autenticação e perfis de cliente CRM.
-*   **Gestão de Endereços**: Adição, listagem e remoção de múltiplos endereços por cliente.
-*   **Gestão de Produtos e Categorias**: CRUD completo para produtos e categorias, incluindo associação de produtos a múltiplas categorias.
-*   **Gestão de Pedidos**: Criação, listagem e atualização de status de pedidos, com cálculo automático de totais e controle de estoque.
+*   **Gestão de Endereços**: Adição, listagem e remoção de múltiplos endereços por cliente, com proteção para não excluir endereços que estão em uso por pedidos.
+*   **Gestão de Produtos e Categorias**: CRUD completo para produtos e categorias, com proteção para não excluir produtos ou categorias que estão em uso por pedidos.
+*   **Gestão de Pedidos**:
+    *   Criação, listagem e busca de pedidos com cálculo automático de totais.
+    *   Atualização de status de pedidos por administradores.
+    *   Cancelamento de pedidos pelo próprio cliente (com devolução de estoque).
+    *   Lógica de reativação de pedidos cancelados (com re-subtração de estoque).
 *   **Upload de Imagens**: Suporte para upload de imagens e serviço de arquivos estáticos.
 *   **Relatórios de Clientes**: Geração de relatórios detalhados para administradores.
 
@@ -34,9 +37,8 @@ O Lunnar Backend é a espinha dorsal da aplicação CRM, responsável por gerenc
 ### Pré-requisitos
 
 1.  Ter o **Java 17** (ou superior) instalado.
-2.  Ter o **PostgreSQL** instalado e rodando.
+2.  Ter o **PostgreSQL** (versão 16 ou inferior) instalado e rodando.
 3.  Ter o **Maven** instalado (ou usar o wrapper `./mvnw` incluso).
-4.  **Docker Desktop** (opcional, mas recomendado para ambiente de desenvolvimento).
 
 ### Configuração do Ambiente
 
@@ -48,7 +50,7 @@ O projeto utiliza o PostgreSQL. Você precisa ter uma instância rodando e um ba
     ```sql
     CREATE DATABASE lunnar_db;
     ```
-    *   **Importante:** O Flyway gerenciará as tabelas automaticamente, mas o banco de dados `lunnar_db` precisa existir antes da aplicação iniciar.
+    *   **Importante:** O Hibernate gerenciará as tabelas automaticamente, mas o banco de dados `lunnar_db` precisa existir antes da aplicação iniciar.
 
 #### 2. Variáveis de Ambiente (`.env`)
 
@@ -63,6 +65,8 @@ Para segurança e flexibilidade, as configurações sensíveis são carregadas d
     DB_USERNAME=postgres
     DB_PASSWORD=sua_senha_do_postgres
     JWT_SECRET=sua_chave_secreta_para_jwt
+    CORS_ALLOWED_ORIGINS=url_do_frontend (http://localhost:3000, por exemplo)
+    BASE_URL=url_do_backend (http://localhost:3000, por exemplo)
     ```
     *   **`JWT_SECRET`**: Use uma string longa e complexa para a chave secreta do JWT.
     *   **`DB_PASSWORD`**: A senha do seu usuário `postgres` no PostgreSQL.
@@ -80,7 +84,6 @@ Para segurança e flexibilidade, as configurações sensíveis são carregadas d
     ```bash
     ./mvnw spring-boot:run
     ```
-    *   O Flyway executará automaticamente as migrações do banco de dados (`V1__create-tables.sql`, `V2__categories.sql`, etc.) na primeira vez que a aplicação for iniciada em um banco de dados vazio.
 
 ### Documentação da API (Swagger UI)
 
