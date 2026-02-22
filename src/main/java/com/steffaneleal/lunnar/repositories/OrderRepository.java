@@ -11,6 +11,7 @@ import java.util.UUID;
 public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByUserIdOrderByCreatedAtDesc(UUID userId);
     List<Order> findByStatus(OrderStatus status);
+    List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
     List<Order> findAllByOrderByCreatedAtDesc();
     boolean existsByShippingAddressId(UUID addressId);
 }

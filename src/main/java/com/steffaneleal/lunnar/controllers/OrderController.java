@@ -27,10 +27,28 @@ public class OrderController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public ResponseEntity<List<OrderResponseDTO>> list(@AuthenticationPrincipal User user) {
-        List<Order> orders = user.getRole() == UserRole.ADMIN
-                ? orderRepository.findAllByOrderByCreatedAtDesc()
-                : orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+    public ResponseEntity<List<OrderResponseDTO>> list(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) String status) {
+
+        List<Order> orders;
+
+        if (user.getRole() == UserRole.ADMIN) {
+            if (status != null && !status.isBlank()) {
+                try {
+                    OrderStatus filteredStatus = OrderStatus.valueOf(status.toUpperCase());
+                    orders = orderRepository.findByStatusOrderByCreatedAtDesc(filteredStatus);
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest().build();
+                }
+            } else {
+                orders = orderRepository.findAllByOrderByCreatedAtDesc();
+            }
+        } else {
+            // Cliente: nunca filtra por status via query param — vê todos os seus próprios pedidos
+            orders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        }
+
         return ResponseEntity.ok(orders.stream().map(this::toDTO).toList());
     }
 
