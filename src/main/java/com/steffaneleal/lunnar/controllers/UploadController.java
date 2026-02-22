@@ -1,6 +1,7 @@
 // Controller para upload de arquivos
 package com.steffaneleal.lunnar.controllers;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,13 +20,16 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class UploadController {
 
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
+
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> upload(@RequestParam("file") MultipartFile file) throws IOException {
         String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
         Path path = Paths.get("uploads/" + filename);
         Files.createDirectories(path.getParent());
         Files.write(path, file.getBytes());
-        String url = "http://localhost:8080/uploads/" + filename;
+        String url = baseUrl + "/uploads/" + filename;
         return ResponseEntity.ok(Map.of("url", url));
     }
 }
