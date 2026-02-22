@@ -25,5 +25,7 @@ public class Address {
     private String neighborhood;
     private String city;
     private String state;
+
+    @Column(name = "zip_code")
     private String zipCode;
 }

@@ -8,10 +8,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-// Relacionamento com o cliente (User com role USER).
 @Entity
 @Table(name = "tb_customer")
 @Getter
@@ -24,7 +24,7 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
     private User user;
 
@@ -33,7 +33,7 @@ public class Customer {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "customer_id")
-    private List<Address> addresses;
+    private List<Address> addresses = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
     private String notes;
