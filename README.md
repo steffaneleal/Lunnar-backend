@@ -1,32 +1,109 @@
-# CRM-Inteligente-SpringBoot
-Este é o servidor da plataforma Lunnar, CRM Inteligente desenvolvido durante a terceira fase do processo seletivo para a Astrocode, utilizando Spring Boot. O repositório da interface (Vue.js) pode ser encontrado [AQUI](https://github.com/steffaneleal/Lunnar-frontend).
+# Lunnar Backend - CRM Inteligente
 
-## Como rodar o projeto localmente
+Este é o servidor da plataforma Lunnar, um CRM Inteligente desenvolvido durante a terceira fase do processo seletivo para a Astrocode, utilizando Spring Boot. O repositório da interface (Vue.js) pode ser encontrado [AQUI](https://github.com/steffaneleal/Lunnar-frontend).
+
+## Sobre o Projeto
+
+O Lunnar Backend é a espinha dorsal da aplicação CRM, responsável por gerenciar dados de usuários, clientes, produtos, categorias, pedidos e endereços. Ele fornece uma API RESTful segura e escalável para o frontend, garantindo a integridade e a consistência das informações.
+
+## Tecnologias Utilizadas
+
+*   **Spring Boot**: Framework para construção de aplicações Java robustas.
+*   **Spring Security**: Para autenticação (JWT) e autorização baseada em roles (ADMIN, USER).
+*   **Spring Data JPA / Hibernate**: Para persistência de dados e mapeamento objeto-relacional.
+*   **PostgreSQL**: Banco de dados relacional.
+*   **Flyway**: Gerenciamento de migrações de banco de dados, garantindo a evolução controlada do esquema.
+*   **Springdoc OpenAPI (Swagger UI)**: Geração automática de documentação interativa da API.
+*   **Lombok**: Para reduzir o código boilerplate.
+*   **Java JWT**: Para manipulação de JSON Web Tokens.
+*   **BCrypt**: Para criptografia de senhas.
+*   **Maven**: Gerenciador de dependências e build.
+
+## Funcionalidades Principais
+
+*   **Autenticação e Autorização**: Login de usuários, registro, geração de JWTs, e controle de acesso baseado em roles (ADMIN, USER).
+*   **Gestão de Usuários e Clientes**: Criação e atualização de perfis de usuário e cliente, com distinção entre usuários de autenticação e perfis de cliente CRM.
+*   **Gestão de Endereços**: Adição, listagem e remoção de múltiplos endereços por cliente.
+*   **Gestão de Produtos e Categorias**: CRUD completo para produtos e categorias, incluindo associação de produtos a múltiplas categorias.
+*   **Gestão de Pedidos**: Criação, listagem e atualização de status de pedidos, com cálculo automático de totais e controle de estoque.
+*   **Upload de Imagens**: Suporte para upload de imagens e serviço de arquivos estáticos.
+*   **Relatórios de Clientes**: Geração de relatórios detalhados para administradores.
+
+## Como Rodar o Projeto Localmente
 
 ### Pré-requisitos
 
-1. Ter o **Java 17** (ou superior) instalado.
-2. Ter o **PostgreSQL** instalado e rodando.
-3. Ter o **Maven** instalado (ou usar o wrapper `./mvnw` incluso).
+1.  Ter o **Java 17** (ou superior) instalado.
+2.  Ter o **PostgreSQL** instalado e rodando.
+3.  Ter o **Maven** instalado (ou usar o wrapper `./mvnw` incluso).
+4.  **Docker Desktop** (opcional, mas recomendado para ambiente de desenvolvimento).
 
-### Configuração do Banco de Dados
+### Configuração do Ambiente
 
-O projeto está configurado para usar um banco de dados chamado `lunnar_db`. O Spring Boot irá gerar as tabelas automaticamente, mas você precisa criar o banco de dados inicial.
+#### 1. Banco de Dados PostgreSQL
 
-No seu cliente SQL (pgAdmin, DBeaver ou terminal), execute:
+O projeto utiliza o PostgreSQL. Você precisa ter uma instância rodando e um banco de dados criado.
 
-```sql
-CREATE DATABASE lunnar_db;
-```
+*   **Crie o banco de dados:** No seu cliente SQL (pgAdmin, DBeaver ou terminal), execute:
+    ```sql
+    CREATE DATABASE lunnar_db;
+    ```
+    *   **Importante:** O Flyway gerenciará as tabelas automaticamente, mas o banco de dados `lunnar_db` precisa existir antes da aplicação iniciar.
 
-Certifique-se de que as credenciais no arquivo `.env` correspondem ao seu PostgreSQL local:
-Copie o arquivo `.env.example` na raiz do projeto, o renomeie como `.env` e altere as credenciais com as suas próprias.
+#### 2. Variáveis de Ambiente (`.env`)
 
-```dotenv
-DB_HOST=host
-DB_PORT=porta_do_banco
-DB_NAME=nome_do_banco
-DB_USERNAME=seu_usuario_do_postgres
-DB_PASSWORD=sua_senha_do_postgres
-JWT_SECRET=sua_chave_token_lunnar
-```
+Para segurança e flexibilidade, as configurações sensíveis são carregadas de um arquivo `.env`.
+
+*   Copie o arquivo `.env.example` na raiz do projeto, renomeie-o como `.env` e altere as credenciais com as suas próprias.
+
+    ```dotenv
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_NAME=lunnar_db
+    DB_USERNAME=postgres
+    DB_PASSWORD=sua_senha_do_postgres
+    JWT_SECRET=sua_chave_secreta_para_jwt
+    ```
+    *   **`JWT_SECRET`**: Use uma string longa e complexa para a chave secreta do JWT.
+    *   **`DB_PASSWORD`**: A senha do seu usuário `postgres` no PostgreSQL.
+
+#### 3. Pasta de Uploads
+
+*   Crie uma pasta chamada `uploads` na raiz do projeto. É aqui que as imagens enviadas serão armazenadas e servidas como recursos estáticos.
+
+### Executando a Aplicação
+
+#### Com Maven (diretamente)
+
+1.  Abra o terminal na raiz do projeto (`Lunnar-backend`).
+2.  Execute o comando:
+    ```bash
+    ./mvnw spring-boot:run
+    ```
+    *   O Flyway executará automaticamente as migrações do banco de dados (`V1__create-tables.sql`, `V2__categories.sql`, etc.) na primeira vez que a aplicação for iniciada em um banco de dados vazio.
+
+### Documentação da API (Swagger UI)
+
+Após a aplicação estar rodando, você pode acessar a documentação interativa da API através do Swagger UI:
+
+*   **URL:** `http://localhost:8080/swagger-ui.html`
+
+Para testar endpoints protegidos:
+1.  Faça login em `/auth/login` (pode ser pelo próprio Swagger UI).
+2.  Copie o token JWT da resposta.
+3.  Clique no botão "Authorize" (canto superior direito), cole o token no campo (no formato `Bearer SEU_TOKEN_AQUI`) e clique em "Authorize".
+
+### Recursos Estáticos (Uploads)
+
+As imagens enviadas para a API são armazenadas na pasta `uploads/` e podem ser acessadas diretamente via URL:
+
+*   **URL:** `http://localhost:8080/uploads/nome_da_imagem.jpg`
+
+### APIs Externas
+
+O projeto utiliza a seguinte API externa:
+
+*   **ViaCEP**: Para consulta de informações de endereço a partir de um CEP. Embora a integração direta não esteja visível nos controllers atuais, a estrutura de dados e a intenção de uso para preenchimento automático de endereços estão presentes.
+    *   **URL**: `https://viacep.com.br`
+
+---
