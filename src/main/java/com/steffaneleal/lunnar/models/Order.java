@@ -28,7 +28,7 @@ public class Order {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shipping_address_id", nullable = false)
+    @JoinColumn(name = "shipping_address_id")
     private Address shippingAddress;
 
     @Column(name = "total_price")

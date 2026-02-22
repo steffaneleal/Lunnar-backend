@@ -9,9 +9,11 @@ import com.steffaneleal.lunnar.models.Customer;
 import com.steffaneleal.lunnar.models.User;
 import com.steffaneleal.lunnar.models.UserRole;
 import com.steffaneleal.lunnar.repositories.CustomerRepository;
+import com.steffaneleal.lunnar.repositories.OrderRepository;
 import com.steffaneleal.lunnar.repositories.UserRepository;
 import com.steffaneleal.lunnar.services.CustomerReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ public class CustomerController {
 
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
     private final CustomerReportService customerReportService;
 
     // Lista todos os clientes (CRM) - Apenas ADMIN
@@ -155,11 +158,20 @@ public class CustomerController {
 
     @DeleteMapping("/me/addresses/{addressId}")
     public ResponseEntity<Void> deleteMyAddress(@PathVariable UUID addressId, @AuthenticationPrincipal User user) {
+        if (orderRepository.existsByShippingAddressId(addressId)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .header("X-Error-Message", "Este endereço não pode ser excluído pois está associado a um ou mais pedidos.")
+                    .build();
+        }
+
         return customerRepository.findByUserId(user.getId())
                 .map(c -> {
-                    c.getAddresses().removeIf(a -> a.getId().equals(addressId));
-                    customerRepository.save(c);
-                    return ResponseEntity.noContent().<Void>build();
+                    boolean removed = c.getAddresses().removeIf(a -> a.getId().equals(addressId));
+                    if (removed) {
+                        customerRepository.save(c);
+                        return ResponseEntity.noContent().<Void>build();
+                    }
+                    return ResponseEntity.notFound().<Void>build();
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
