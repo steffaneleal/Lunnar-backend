@@ -54,18 +54,15 @@ public class OrderController {
             return ResponseEntity.badRequest().body("Endereço de entrega é obrigatório.");
         }
 
-        // Busca User gerenciado (evita detached entity)
         User user = userRepository.findById(authenticatedUser.getId())
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
 
-        // Garante que o Customer existe (cria se necessário)
         Customer customer = customerRepository.findByUserId(user.getId()).orElseGet(() -> {
             Customer c = new Customer();
             c.setUser(user);
             return customerRepository.save(c);
         });
 
-        // Valida que o endereço pertence ao Customer deste usuário
         Address shippingAddress = customer.getAddresses().stream()
                 .filter(a -> a.getId().equals(dto.addressId()))
                 .findFirst()
@@ -74,7 +71,6 @@ public class OrderController {
             return ResponseEntity.badRequest().body("Endereço não encontrado. Cadastre um endereço antes de finalizar o pedido.");
         }
 
-        // Monta itens e calcula total
         List<OrderItem> items = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
         for (OrderItemRequestDTO itemDto : dto.items()) {
@@ -101,7 +97,6 @@ public class OrderController {
         order.setItems(items);
         order = orderRepository.save(order);
 
-        // Desconta estoque após salvar
         for (OrderItem item : order.getItems()) {
             Product p = item.getProduct();
             p.setStockQuantity(p.getStockQuantity() - item.getQuantity());
@@ -111,6 +106,42 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(order));
     }
 
+    // Cancelamento pelo próprio cliente — apenas pedidos PENDENTE podem ser cancelados pelo cliente
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<?> cancelByCustomer(@PathVariable UUID id, @AuthenticationPrincipal User authenticatedUser) {
+        // Admin não usa este endpoint — usa o PATCH /status
+        if (authenticatedUser.getRole() == UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Administradores devem usar o endpoint de status.");
+        }
+
+        return orderRepository.findById(id)
+                .map(order -> {
+                    // Garante que o pedido pertence ao usuário logado
+                    if (!order.getUser().getId().equals(authenticatedUser.getId())) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).<Object>body("Você não tem permissão para cancelar este pedido.");
+                    }
+
+                    // Só permite cancelar pedidos PENDENTE
+                    if (order.getStatus() != OrderStatus.PENDENTE) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .<Object>body("Apenas pedidos com status PENDENTE podem ser cancelados. Status atual: " + order.getStatus());
+                    }
+
+                    // Devolve estoque de todos os itens
+                    for (OrderItem item : order.getItems()) {
+                        Product p = item.getProduct();
+                        p.setStockQuantity(p.getStockQuantity() + item.getQuantity());
+                        productRepository.save(p);
+                    }
+
+                    order.setStatus(OrderStatus.CANCELADO_PELO_CLIENTE);
+                    return ResponseEntity.<Object>ok(toDTO(orderRepository.save(order)));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Alteração de status pelo admin — bloqueado se o cliente já cancelou
     @PatchMapping("/{id}/status")
     @Transactional
     public ResponseEntity<?> updateStatus(@PathVariable UUID id, @RequestBody OrderStatusRequestDTO dto, @AuthenticationPrincipal User user) {
@@ -118,10 +149,22 @@ public class OrderController {
 
         return orderRepository.findById(id)
                 .map(order -> {
+                    // Pedido cancelado pelo cliente é imutável pelo admin
+                    if (order.getStatus() == OrderStatus.CANCELADO_PELO_CLIENTE) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .<Object>body("Este pedido foi cancelado pelo cliente e não pode ter seu status alterado.");
+                    }
+
                     OrderStatus anterior = order.getStatus();
                     OrderStatus novo = dto.status();
 
-                    // Cancelamento: devolve estoque (apenas se não estava cancelado antes)
+                    // Admin não pode setar CANCELADO_PELO_CLIENTE — esse status é exclusivo do cliente
+                    if (novo == OrderStatus.CANCELADO_PELO_CLIENTE) {
+                        return ResponseEntity.badRequest()
+                                .<Object>body("O status CANCELADO_PELO_CLIENTE é exclusivo do cliente e não pode ser definido pelo administrador.");
+                    }
+
+                    // Cancelamento pelo admin: devolve estoque
                     if (novo == OrderStatus.CANCELADO && anterior != OrderStatus.CANCELADO) {
                         for (OrderItem item : order.getItems()) {
                             Product p = item.getProduct();
@@ -130,7 +173,7 @@ public class OrderController {
                         }
                     }
 
-                    // Reativação: desconta estoque novamente (sai de CANCELADO para outro status)
+                    // Reativação (saiu de CANCELADO): desconta estoque novamente
                     if (anterior == OrderStatus.CANCELADO && novo != OrderStatus.CANCELADO) {
                         for (OrderItem item : order.getItems()) {
                             Product p = item.getProduct();
@@ -143,7 +186,7 @@ public class OrderController {
                     }
 
                     order.setStatus(novo);
-                    return ResponseEntity.ok(toDTO(orderRepository.save(order)));
+                    return ResponseEntity.<Object>ok(toDTO(orderRepository.save(order)));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
