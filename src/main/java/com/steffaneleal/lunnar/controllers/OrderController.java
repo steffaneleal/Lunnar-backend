@@ -153,6 +153,7 @@ public class OrderController {
                 ? order.getItems().stream().map(i -> new OrderItemResponseDTO(
                 i.getProduct().getId(),
                 i.getProduct().getName(),
+                i.getProduct().getImageUrl(),
                 i.getQuantity(),
                 i.getUnitPrice(),
                 i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity()))
