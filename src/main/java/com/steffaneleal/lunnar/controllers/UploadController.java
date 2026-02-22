@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class UploadController {
 
-    @Value("${app.base-url:http://localhost:8080}")
+    @Value("${app.base-url}")
     private String baseUrl;
 
     @PostMapping("/upload")
