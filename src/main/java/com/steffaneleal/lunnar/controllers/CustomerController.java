@@ -39,6 +39,7 @@ public class CustomerController {
     public ResponseEntity<List<CustomerDTO>> listAll(@AuthenticationPrincipal User user) {
         if (user.getRole() != UserRole.ADMIN) return ResponseEntity.status(403).build();
         List<CustomerDTO> list = customerRepository.findAll().stream()
+                .filter(c -> c.getUser().getRole() == UserRole.USER)
                 .sorted(Comparator.comparing(c -> c.getUser().getName(), String.CASE_INSENSITIVE_ORDER))
                 .map(this::toDTO)
                 .toList();
