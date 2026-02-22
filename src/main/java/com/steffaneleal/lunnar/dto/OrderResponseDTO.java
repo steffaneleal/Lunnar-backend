@@ -15,6 +15,7 @@ public record OrderResponseDTO(
         BigDecimal totalPrice,
         OrderStatus status,
         LocalDateTime createdAt,
-        List<OrderItemResponseDTO> items
+        List<OrderItemResponseDTO> items,
+        AddressDTO shippingAddress
 ) {
 }
