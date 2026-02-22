@@ -9,6 +9,7 @@ import com.steffaneleal.lunnar.models.Product;
 import com.steffaneleal.lunnar.repositories.CategoryRepository;
 import com.steffaneleal.lunnar.repositories.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -61,9 +62,17 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody ProductRequestDTO dto) {
+        // Validação backend: nome, descrição e preço são obrigatórios
+        if (dto.name() == null || dto.name().isBlank())
+            return ResponseEntity.badRequest().body("O nome do produto é obrigatório.");
+        if (dto.description() == null || dto.description().isBlank())
+            return ResponseEntity.badRequest().body("A descrição do produto é obrigatória.");
+        if (dto.price() == null || dto.price().signum() <= 0)
+            return ResponseEntity.badRequest().body("O preço do produto deve ser maior que zero.");
+
         Product p = new Product();
-        p.setName(dto.name());
-        p.setDescription(dto.description());
+        p.setName(dto.name().trim());
+        p.setDescription(dto.description().trim());
         p.setPrice(dto.price());
         p.setStockQuantity(dto.stockQuantity() != null ? dto.stockQuantity() : 0);
         p.setImageUrl(dto.imageUrl());
@@ -73,10 +82,17 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ProductRequestDTO dto) {
+        if (dto.name() == null || dto.name().isBlank())
+            return ResponseEntity.badRequest().body("O nome do produto é obrigatório.");
+        if (dto.description() == null || dto.description().isBlank())
+            return ResponseEntity.badRequest().body("A descrição do produto é obrigatória.");
+        if (dto.price() == null || dto.price().signum() <= 0)
+            return ResponseEntity.badRequest().body("O preço do produto deve ser maior que zero.");
+
         return productRepository.findById(id)
                 .map(p -> {
-                    p.setName(dto.name());
-                    p.setDescription(dto.description());
+                    p.setName(dto.name().trim());
+                    p.setDescription(dto.description().trim());
                     p.setPrice(dto.price());
                     if (dto.stockQuantity() != null) p.setStockQuantity(dto.stockQuantity());
                     p.setImageUrl(dto.imageUrl());
@@ -97,10 +113,16 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<?> delete(@PathVariable UUID id) {
         if (!productRepository.existsById(id)) return ResponseEntity.notFound().build();
-        productRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            productRepository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (DataIntegrityViolationException e) {
+            // Produto está referenciado em pedidos — não pode ser excluído
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Este produto possui pedidos associados e não pode ser excluído.");
+        }
     }
 
     private Set<Category> resolveCategories(List<UUID> ids) {
